@@ -1,0 +1,101 @@
+#!/bin/bash
+
+# ===========================
+# build - Build Automatizado
+# ===========================
+# Detecta o tipo de projeto e executa o comando de build apropriado.
+# Suporta: Node.js, Java/Gradle, Python, Go, Rust, .NET, Maven
+# Uso:
+#   build [--verbose|-v]
+# ===========================
+
+# Configurações
+VERBOSE=false
+if [[ "$1" == "--verbose" || "$1" == "-v" ]]; then
+    VERBOSE=true
+fi
+
+log() {
+    if $VERBOSE; then
+        echo "[DEBUG] $1"
+    fi
+}
+
+echo "Analisando projeto..."
+
+# Node.js (npm/yarn/pnpm)
+if [ -f "package.json" ]; then
+    echo "Projeto Node.js detectado"
+    if grep -q '"build"' package.json; then
+        # Verifica o gerenciador de pacotes
+        if [ -f "yarn.lock" ]; then
+            echo "Executando 'yarn build'"
+            yarn build || { echo "❌ Falha no yarn build"; exit 1; }
+        elif [ -f "pnpm-lock.yaml" ]; then
+            echo "Executando 'pnpm build'"
+            pnpm build || { echo "❌ Falha no pnpm build"; exit 1; }
+        else
+            echo "Executando 'npm run build'"
+            npm run build || { echo "❌ Falha no npm run build"; exit 1; }
+        fi
+    else
+        echo "Script 'build' não encontrado no package.json"
+        exit 0
+    fi
+
+# Java/Gradle
+elif [ -f "build.gradle" ] || [ -f "build.gradle.kts" ]; then
+    echo "Projeto Java/Gradle detectado"
+    echo "Executando './gradlew build'"
+    ./gradlew build || { echo "❌ Falha no gradle build"; exit 1; }
+
+# Java/Maven
+elif [ -f "pom.xml" ]; then
+    echo "Projeto Java/Maven detectado"
+    echo "Executando 'mvn package'"
+    mvn package || { echo "❌ Falha no maven build"; exit 1; }
+
+# Python (setup.py ou pyproject.toml)
+elif [ -f "setup.py" ] || [ -f "pyproject.toml" ]; then
+    echo "🐍 Projeto Python detectado"
+    if [ -f "setup.py" ]; then
+        echo "Executando 'python setup.py build'"
+        python setup.py build || { echo "❌ Falha no python build"; exit 1; }
+    else
+        echo "Executando 'pip install -e .'"
+        pip install -e . || { echo "❌ Falha no pip install"; exit 1; }
+    fi
+
+# Go
+elif [ -f "go.mod" ]; then
+    echo "Projeto Go detectado"
+    echo "Executando 'go build'"
+    go build ./... || { echo "❌ Falha no go build"; exit 1; }
+
+# Rust
+elif [ -f "Cargo.toml" ]; then
+    echo "Projeto Rust detectado"
+    echo "Executando 'cargo build'"
+    cargo build || { echo "❌ Falha no cargo build"; exit 1; }
+
+# .NET
+elif ls *.csproj 1> /dev/null 2>&1; then
+    echo "Projeto .NET detectado"
+    echo "Executando 'dotnet build'"
+    dotnet build || { echo "❌ Falha no dotnet build"; exit 1; }
+
+else
+    echo "Tipo de projeto não reconhecido ou não suportado"
+    echo "Projetos suportados:"
+    echo "- Node.js (npm/yarn/pnpm)"
+    echo "- Java/Gradle (build.gradle)"
+    echo "- Java/Maven (pom.xml)"
+    echo "- Python (setup.py/pyproject.toml)"
+    echo "- Go (go.mod)"
+    echo "- Rust (Cargo.toml)"
+    echo "- .NET (*.csproj)"
+    exit 1
+fi
+
+echo "Build concluído com sucesso"
+exit 0
