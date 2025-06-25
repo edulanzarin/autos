@@ -62,11 +62,11 @@ if [ "$LOCAL" = "$REMOTE" ]; then
 elif [ "$LOCAL" = "$BASE" ]; then
     # Atualização disponível e sem conflitos locais
     BACKUP_NAME="autos-$(date +%Y%m%d%H%M%S)"
-    log "💾 Criando backup em: $BACKUP_DIR/$BACKUP_NAME"
+    log "Criando backup em: $BACKUP_DIR/$BACKUP_NAME"
     mkdir -p "$BACKUP_DIR"
     cp -r "$INSTALL_DIR" "$BACKUP_DIR/$BACKUP_NAME"
     
-    log "⬇️ Aplicando atualizações do repositório remoto..."
+    log "⬇Aplicando atualizações do repositório remoto..."
     if git pull --rebase; then
         # Garante que todos os scripts sejam executáveis, exceto arquivos do .git
         log "Ajustando permissões dos scripts..."
@@ -83,5 +83,5 @@ else
     log "1. Faça backup das suas alterações importantes."
     log "2. Execute: git status para ver os arquivos em conflito."
     log "3. Resolva os conflitos e finalize com:"
-    log "   git add . && git rebase --continue"
+    log "git add . && git rebase --continue"
     exit 1

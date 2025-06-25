@@ -1,21 +1,29 @@
 #!/bin/bash
 
-# Verifica se recebeu mensagem de commit
+# ===========================
+# gpush - Commit e Push Simplificado
+# ===========================
+# Faz commit de todas as alterações e envia para a branch atual.
+# Uso:
+#   gpush "mensagem do commit"
+# ===========================
+
+# Verifica se uma mensagem de commit foi fornecida
 if [ -z "$1" ]; then
     echo "Uso: gpush \"mensagem do commit\""
     exit 1
 fi
 
-# Verifica se há alterações (mais robusto)
+# Verifica se há alterações no repositório (staged ou unstaged)
 if [ -z "$(git status --porcelain)" ]; then
     echo "Nenhuma alteração para commitar."
     exit 0
 fi
 
-# Obtém o nome da branch atual
+# Descobre o nome da branch atual
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
 
-# Executa os comandos Git
+# Adiciona todas as alterações, faz commit e envia para o repositório remoto
 git add .
 git commit -m "$1"
-git push origin "$BRANCH"
+git

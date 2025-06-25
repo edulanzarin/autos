@@ -1,17 +1,28 @@
 #!/bin/bash
 
+# ===========================
+# Autos - Dispatcher de Comandos
+# ===========================
+# Permite executar scripts organizados em subdiretórios de forma unificada.
+# Também lista comandos disponíveis e exibe ajuda contextual.
+#
+# Uso:
+#   autos <comando> [argumentos...]
+#   autos --list
+#   autos --help
+# ===========================
+
 # Diretório base onde os scripts estão instalados
 BASE_DIR=$(dirname "$(realpath "$0")")
 
-# Função para encontrar scripts em subdiretórios
+# Função para localizar um script executável pelo nome, ignorando o próprio autos e o setup.sh
 find_script() {
     local cmd=$1
     # Procura recursivamente por arquivos executáveis com o nome do comando
-    # Ignora o próprio script autos e o setup.sh
     find "$BASE_DIR" -type f -name "$cmd" -perm -u+x ! -name "autos" ! -name "setup.sh" | head -n 1
 }
 
-# Lista de comandos disponíveis
+# Lista todos os comandos disponíveis (scripts executáveis)
 list_commands() {
     echo "Comandos disponíveis:"
     find "$BASE_DIR" -type f -perm -u+x ! -name "autos" ! -name "setup.sh" | while read -r script; do
@@ -19,7 +30,7 @@ list_commands() {
     done | sort | uniq
 }
 
-# Mostra ajuda completa
+# Exibe mensagem de ajuda e lista comandos
 show_help() {
     echo "Uso: autos <comando> [argumentos...]"
     echo "      autos [opção]"
@@ -31,7 +42,7 @@ show_help() {
     list_commands
 }
 
-# Verifica opções especiais
+# Trata opções especiais de linha de comando
 case "$1" in
     -h|--help)
         show_help
@@ -43,22 +54,21 @@ case "$1" in
         ;;
 esac
 
-# Verifica se foi passado algum comando
+# Se nenhum comando foi informado, mostra ajuda e encerra
 if [ -z "$1" ]; then
     show_help
     exit 1
 fi
 
-# O comando que será executado
+# Nome do comando a ser executado
 COMMAND="$1"
-shift  # Remove o primeiro argumento para passar os demais
+shift  # Remove o comando dos argumentos
 
-# Caminho para o script (procura em todas as subpastas)
+# Procura o script correspondente ao comando
 COMMAND_SCRIPT=$(find_script "$COMMAND")
 
-# Verifica se encontrou o script
+# Se encontrou um script executável, repassa os argumentos e executa
 if [ -n "$COMMAND_SCRIPT" ] && [ -x "$COMMAND_SCRIPT" ]; then
-    # Executa o script passando todos os argumentos restantes
     "$COMMAND_SCRIPT" "$@"
     exit $?
 else

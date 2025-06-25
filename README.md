@@ -1,4 +1,4 @@
-# Autos - Gerenciador de Scripts Automatizados
+# Autos - Scripts Automatizados
 
 ![GitHub](https://img.shields.io/badge/license-MIT-blue)
 ![Shell Script](https://img.shields.io/badge/shell_script-%23121011.svg?logo=gnu-bash&logoColor=white)
