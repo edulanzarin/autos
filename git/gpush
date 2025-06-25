@@ -26,4 +26,4 @@ BRANCH=$(git rev-parse --abbrev-ref HEAD)
 # Adiciona todas as alterações, faz commit e envia para o repositório remoto
 git add .
 git commit -m "$1"
-git
+git push origin "$BRANCH"
