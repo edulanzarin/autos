@@ -8,8 +8,6 @@
 #
 # Uso:
 #   autos <comando> [argumentos...]
-#   autos --list
-#   autos --help
 # ===========================
 
 # Diretório base onde os scripts estão instalados
@@ -18,14 +16,26 @@ BASE_DIR=$(dirname "$(realpath "$0")")
 # Função para localizar um script executável pelo nome, ignorando o próprio autos e o setup.sh
 find_script() {
     local cmd=$1
-    # Procura recursivamente por arquivos executáveis com o nome do comando
-    find "$BASE_DIR" -type f -name "$cmd" -perm -u+x ! -name "autos" ! -name "setup.sh" | head -n 1
+    # Ignora arquivos .sample, .md, e arquivos ocultos
+    find "$BASE_DIR" -type f -name "$cmd" \
+        ! -name "*.sample" \
+        ! -name "*.md" \
+        ! -name ".*" \
+        -perm -u+x \
+        ! -name "autos" \
+        ! -name "setup.sh" | head -n 1
 }
 
 # Lista todos os comandos disponíveis (scripts executáveis)
 list_commands() {
     echo "Comandos disponíveis:"
-    find "$BASE_DIR" -type f -perm -u+x ! -name "autos" ! -name "setup.sh" | while read -r script; do
+    find "$BASE_DIR" -type f \
+        ! -name "*.sample" \
+        ! -name "*.md" \
+        ! -name ".*" \
+        -perm -u+x \
+        ! -name "autos" \
+        ! -name "setup.sh" | while read -r script; do
         echo "  - $(basename "$script")"
     done | sort | uniq
 }
@@ -34,11 +44,6 @@ list_commands() {
 show_help() {
     echo "Uso: autos <comando> [argumentos...]"
     echo "      autos [opção]"
-    echo ""
-    echo "Opções:"
-    echo "  -h, --help     Mostra esta ajuda"
-    echo "  -l, --list     Lista todos os comandos disponíveis"
-    echo ""
     list_commands
 }
 

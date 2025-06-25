@@ -46,7 +46,7 @@ if ! grep -q "AUTOS UPDATE CHECK" "$RC_FILE"; then
 # AUTOS UPDATE CHECK - Verifica atualizações uma vez por dia
 if [ -x "$(command -v autos)" ]; then
     if [ ! -f "$HOME/.autos_last_check" ] || [ $(date +%Y%m%d) -gt $(date -r "$HOME/.autos_last_check" +%Y%m%d) ]; then
-        autos system/update --check-only &>/dev/null &
+        autos core/update --check-only &>/dev/null &
         touch "$HOME/.autos_last_check"
     fi
 fi
