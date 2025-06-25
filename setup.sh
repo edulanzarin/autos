@@ -53,7 +53,7 @@ fi
 EOF
     echo "Verificação automática configurada!"
 else
-    echo "ℹVerificação automática já está configurada."
+    echo "Verificação automática já está configurada."
 fi
 
 echo -e "\nConfiguração concluída! Para finalizar, execute:"
