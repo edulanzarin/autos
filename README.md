@@ -104,7 +104,7 @@ autos hello
 
 ## Logs e Diagnóstico
 
-- Logs de atualização ficam em `system/update.log`.
+- Logs de atualização ficam em `core/update.log`.
 - Mensagens de erro e instruções são exibidas no terminal.
 
 ## Licença
