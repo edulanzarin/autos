@@ -1,0 +1,15 @@
+#!/bin/bash
+
+# ===========================
+# gpull - Pull Simplificado
+# ===========================
+# Atualiza a branch atual com as alterações do repositório remoto.
+# Uso:
+#   gpull
+# ===========================
+
+# Descobre o nome da branch atual
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Executa o pull na branch atual
+git pull origin "$BRANCH"
