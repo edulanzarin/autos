@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Verifica se recebeu mensagem de commit
+if [ -z "$1" ]; then
+    echo "Uso: gpush \"mensagem do commit\""
+    exit 1
+fi
+
+# Verifica se há alterações (mais robusto)
+if [ -z "$(git status --porcelain)" ]; then
+    echo "Nenhuma alteração para commitar."
+    exit 0
+fi
+
+# Obtém o nome da branch atual
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+
+# Executa os comandos Git
+git add .
+git commit -m "$1"
+git push origin "$BRANCH"

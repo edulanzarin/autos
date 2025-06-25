@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# Diretório base onde os scripts estão instalados
+BASE_DIR=$(dirname "$(realpath "$0")")
+
+# Função para encontrar scripts em subdiretórios
+find_script() {
+    local cmd=$1
+    # Procura recursivamente por arquivos executáveis com o nome do comando
+    # Ignora o próprio script autos e o setup.sh
+    find "$BASE_DIR" -type f -name "$cmd" -perm -u+x ! -name "autos" ! -name "setup.sh" | head -n 1
+}
+
+# Lista de comandos disponíveis
+list_commands() {
+    echo "Comandos disponíveis:"
+    find "$BASE_DIR" -type f -perm -u+x ! -name "autos" ! -name "setup.sh" | while read -r script; do
+        echo "  - $(basename "$script")"
+    done | sort | uniq
+}
+
+# Mostra ajuda completa
+show_help() {
+    echo "Uso: autos <comando> [argumentos...]"
+    echo "      autos [opção]"
+    echo ""
+    echo "Opções:"
+    echo "  -h, --help     Mostra esta ajuda"
+    echo "  -l, --list     Lista todos os comandos disponíveis"
+    echo ""
+    list_commands
+}
+
+# Verifica opções especiais
+case "$1" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+    -l|--list)
+        list_commands
+        exit 0
+        ;;
+esac
+
+# Verifica se foi passado algum comando
+if [ -z "$1" ]; then
+    show_help
+    exit 1
+fi
+
+# O comando que será executado
+COMMAND="$1"
+shift  # Remove o primeiro argumento para passar os demais
+
+# Caminho para o script (procura em todas as subpastas)
+COMMAND_SCRIPT=$(find_script "$COMMAND")
+
+# Verifica se encontrou o script
+if [ -n "$COMMAND_SCRIPT" ] && [ -x "$COMMAND_SCRIPT" ]; then
+    # Executa o script passando todos os argumentos restantes
+    "$COMMAND_SCRIPT" "$@"
+    exit $?
+else
+    echo "Erro: Comando '$COMMAND' não encontrado ou não executável" >&2
+    echo ""
+    show_help
+    exit 1
+fi

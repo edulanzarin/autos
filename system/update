@@ -1,0 +1,65 @@
+#!/bin/bash
+
+# Configurações
+INSTALL_DIR=$(dirname "$(realpath "$0")")
+BACKUP_DIR="$HOME/autos-backup"
+LOG_FILE="$INSTALL_DIR/update.log"
+
+# Função para logs
+log() {
+    echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
+}
+
+# Verifica se é um repositório
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    log "❌ Erro: Não é um repositório Git"
+    exit 1
+fi
+
+# Modo de apenas verificar atualizações
+if [ "$1" == "--check-only" ]; then
+    git fetch origin >/dev/null 2>&1
+    LOCAL=$(git rev-parse @)
+    REMOTE=$(git rev-parse @{u})
+    if [ "$LOCAL" != "$REMOTE" ]; then
+        echo "[AUTOS] 🔄 Atualização disponível! Execute: autos system/update"
+    fi
+    exit 0
+fi
+
+# Lógica de atualização completa
+log "🔄 Buscando atualizações..."
+git fetch origin
+
+LOCAL=$(git rev-parse @)
+REMOTE=$(git rev-parse @{u})
+BASE=$(git merge-base @ @{u})
+
+if [ "$LOCAL" = "$REMOTE" ]; then
+    log "✅ Você está na versão mais recente."
+    exit 0
+elif [ "$LOCAL" = "$BASE" ]; then
+    # Backup
+    BACKUP_NAME="autos-$(date +%Y%m%d%H%M%S)"
+    log "💾 Backup: $BACKUP_DIR/$BACKUP_NAME"
+    mkdir -p "$BACKUP_DIR"
+    cp -r "$INSTALL_DIR" "$BACKUP_DIR/$BACKUP_NAME"
+    
+    # Atualização
+    log "⬇️ Baixando atualizações..."
+    if git pull --rebase; then
+        log "🔑 Aplicando permissões..."
+        find "$INSTALL_DIR" -type f ! -path "*/.git/*" -exec chmod +x {} \;
+        log "✅ Atualização concluída!"
+    else
+        log "❌ Falha na atualização. Veja o log: $LOG_FILE"
+        exit 1
+    fi
+else
+    log "⚠️  Conflitos detectados! Resolva manualmente:"
+    log "1. Faça backup das suas alterações"
+    log "2. Execute: git status"
+    log "3. Resolva os conflitos e depois:"
+    log "   git add . && git rebase --continue"
+    exit 1
+fi
