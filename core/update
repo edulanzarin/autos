@@ -1,65 +1,87 @@
 #!/bin/bash
 
-# Configurações
+# ===========================
+# Autos - Script de Atualização
+# ===========================
+# Atualiza o repositório Autos de forma segura, com backup automático,
+# logs detalhados e verificação de conflitos.
+# Pode ser executado manualmente ou chamado pelo sistema de verificação diária.
+#
+# Autor: Edu Lanzarin
+# Licença: MIT
+# ===========================
+
+# Diretório onde o Autos está instalado
 INSTALL_DIR=$(dirname "$(realpath "$0")")
+
+# Diretório para armazenar backups das versões antigas
 BACKUP_DIR="$HOME/autos-backup"
+
+# Arquivo de log para registrar todas as operações de atualização
 LOG_FILE="$INSTALL_DIR/update.log"
 
-# Função para logs
+# Função utilitária para registrar mensagens com timestamp no log e na tela
 log() {
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] $1" | tee -a "$LOG_FILE"
 }
 
-# Verifica se é um repositório
+# Verifica se o diretório atual é um repositório Git válido
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    log "❌ Erro: Não é um repositório Git"
+    log "Erro: Este diretório não é um repositório Git."
     exit 1
 fi
 
-# Modo de apenas verificar atualizações
+# Modo de verificação rápida: apenas checa se há atualizações remotas
 if [ "$1" == "--check-only" ]; then
     git fetch origin >/dev/null 2>&1
     LOCAL=$(git rev-parse @)
     REMOTE=$(git rev-parse @{u})
     if [ "$LOCAL" != "$REMOTE" ]; then
-        echo "[AUTOS] 🔄 Atualização disponível! Execute: autos system/update"
+        echo "[AUTOS] Atualização disponível! Execute: autos system/update"
     fi
     exit 0
 fi
 
-# Lógica de atualização completa
-log "🔄 Buscando atualizações..."
+# ===========================
+# Processo de Atualização Completa
+# ===========================
+
+log "Buscando atualizações remotas..."
 git fetch origin
 
+# Obtém os hashes dos commits local, remoto e base comum
 LOCAL=$(git rev-parse @)
 REMOTE=$(git rev-parse @{u})
 BASE=$(git merge-base @ @{u})
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-    log "✅ Você está na versão mais recente."
+    # Nenhuma atualização disponível
+    log "Você já está usando a versão mais recente do Autos."
     exit 0
+
 elif [ "$LOCAL" = "$BASE" ]; then
-    # Backup
+    # Atualização disponível e sem conflitos locais
     BACKUP_NAME="autos-$(date +%Y%m%d%H%M%S)"
-    log "💾 Backup: $BACKUP_DIR/$BACKUP_NAME"
+    log "💾 Criando backup em: $BACKUP_DIR/$BACKUP_NAME"
     mkdir -p "$BACKUP_DIR"
     cp -r "$INSTALL_DIR" "$BACKUP_DIR/$BACKUP_NAME"
     
-    # Atualização
-    log "⬇️ Baixando atualizações..."
+    log "⬇️ Aplicando atualizações do repositório remoto..."
     if git pull --rebase; then
-        log "🔑 Aplicando permissões..."
+        # Garante que todos os scripts sejam executáveis, exceto arquivos do .git
+        log "Ajustando permissões dos scripts..."
         find "$INSTALL_DIR" -type f ! -path "*/.git/*" -exec chmod +x {} \;
-        log "✅ Atualização concluída!"
+        log "Atualização concluída com sucesso!"
     else
-        log "❌ Falha na atualização. Veja o log: $LOG_FILE"
+        log "Falha ao aplicar atualizações. Consulte o log: $LOG_FILE"
         exit 1
     fi
+
 else
-    log "⚠️  Conflitos detectados! Resolva manualmente:"
-    log "1. Faça backup das suas alterações"
-    log "2. Execute: git status"
-    log "3. Resolva os conflitos e depois:"
+    # Existem alterações locais que conflitam com o remoto
+    log "Conflitos detectados entre sua versão local e o repositório remoto!"
+    log "1. Faça backup das suas alterações importantes."
+    log "2. Execute: git status para ver os arquivos em conflito."
+    log "3. Resolva os conflitos e finalize com:"
     log "   git add . && git rebase --continue"
     exit 1
-fi
