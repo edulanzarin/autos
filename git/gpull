@@ -10,42 +10,58 @@
 #   --dry-run  Simula a operação sem efetivar mudanças
 # ===========================
 
+# Cores ANSI e ícones
+GREEN="\e[32m"
+YELLOW="\e[33m"
+RED="\e[31m"
+BLUE="\e[34m"
+BOLD="\e[1m"
+RESET="\e[0m"
+CHECK="${GREEN}✔${RESET}"
+CROSS="${RED}✖${RESET}"
+ARROW="${BLUE}➜${RESET}"
+
 # Modo simulação
 DRY_RUN=false
 if [[ "$1" == "--dry-run" ]]; then
     DRY_RUN=true
-    echo "MODO SIMULAÇÃO (nenhuma alteração será feita)"
+    echo -e "${YELLOW}${BOLD}[Modo Simulação]${RESET} Nenhuma alteração será feita"
 fi
 
 # Verifica se é um repositório Git
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    echo "Erro: Diretório não é um repositório Git"
+if ! git rev-parse --is-inside-work-tree &> /dev/null; then
+    echo -e "${CROSS} ${BOLD}Erro:${RESET} Diretório não é um repositório Git"
     exit 1
 fi
 
 # Descobre o nome da branch atual
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-echo "Branch atual: $BRANCH"
+echo -e "${ARROW} Branch atual: ${BOLD}${BRANCH}${RESET}"
 
 # Verifica se há alterações não commitadas
 if [[ -n "$(git status --porcelain)" ]]; then
-    echo "Aviso: Há alterações não commitadas no working directory"
+    echo -e "${YELLOW}Aviso:${RESET} Há alterações não commitadas no working directory"
     git status --short
     if ! $DRY_RUN; then
         read -p "Continuar mesmo assim? [y/N] " -n 1 -r
         echo
-        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+        [[ ! $REPLY =~ ^[Yy]$ ]] && echo -e "${CROSS} Operação cancelada" && exit 1
     fi
 fi
 
-# Comando que seria executado
+# Mostra o comando
 PULL_CMD="git pull origin $BRANCH"
-echo "Comando: $PULL_CMD"
+echo -e "${ARROW} Comando: ${BOLD}$PULL_CMD${RESET}"
 
-# Execução condicional
+# Execução
 if $DRY_RUN; then
-    echo "Simulação concluída (use sem --dry-run para executar)"
+    echo -e "${YELLOW}Simulação concluída.${RESET} Use sem ${BOLD}--dry-run${RESET} para executar de fato."
 else
-    echo "Sincronizando com o remoto..."
-    eval "$PULL_CMD"
+    echo -e "${ARROW} Sincronizando com o remoto..."
+    if eval "$PULL_CMD"; then
+        echo -e "${CHECK} Atualização concluída com sucesso!"
+    else
+        echo -e "${CROSS} Falha ao executar pull."
+        exit 1
+    fi
 fi
