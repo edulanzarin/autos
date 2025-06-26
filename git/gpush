@@ -10,6 +10,17 @@
 #   --verify   Executa verificações extras antes de prosseguir
 # ===========================
 
+# Cores ANSI
+GREEN="\e[32m"
+YELLOW="\e[33m"
+RED="\e[31m"
+BLUE="\e[34m"
+BOLD="\e[1m"
+RESET="\e[0m"
+CHECK="${GREEN}✔${RESET}"
+CROSS="${RED}✖${RESET}"
+ARROW="${BLUE}➜${RESET}"
+
 # Configurações
 DRY_RUN=false
 VERIFY=false
@@ -35,82 +46,75 @@ done
 
 # Validações iniciais
 if [ -z "$COMMIT_MSG" ]; then
-    echo "Erro: Mensagem de commit obrigatória"
-    echo "Uso: gpush \"mensagem\" [--dry-run|--verify]"
+    echo -e "${CROSS} ${BOLD}Erro:${RESET} Mensagem de commit obrigatória"
+    echo -e "Uso: ${BOLD}gpush \"mensagem\" [--dry-run|--verify]${RESET}"
     exit 1
 fi
 
-if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-    echo "Erro: Diretório não é um repositório Git"
+if ! git rev-parse --is-inside-work-tree &> /dev/null; then
+    echo -e "${CROSS} ${BOLD}Erro:${RESET} Diretório não é um repositório Git"
     exit 1
 fi
 
-# Verificação de segurança
-check_changes() {
-    local changes=$(git status --porcelain)
-    if [ -z "$changes" ]; then
-        echo "Nenhuma alteração para commitar"
-        exit 0
-    else
-        echo "Alterações detectadas:"
-        echo "$changes" | sed 's/^/  /'
-    fi
-}
-
-# Verificação extra no modo --verify
+# Verificações extras (--verify)
 verify_conditions() {
-    echo "Verificações adicionais:"
-    
-    # 1. Confere se está na branch correta
+    echo -e "${ARROW} Verificações adicionais..."
+
     CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
     if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
-        read -p "Você está na branch $CURRENT_BRANCH. Continuar? [y/N] " -n 1 -r
+        echo -e "${YELLOW}Você está na branch ${BOLD}$CURRENT_BRANCH${RESET}${YELLOW}.${RESET}"
+        read -p "Deseja continuar? [y/N] " -n 1 -r
         echo
-        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+        [[ ! $REPLY =~ ^[Yy]$ ]] && echo -e "${CROSS} Operação cancelada" && exit 1
     fi
 
-    # 2. Verifica conflitos com o remoto
     if ! git fetch --dry-run 2>&1 | grep -q "up to date"; then
-        echo "A branch remota tem alterações não sincronizadas!"
+        echo -e "${YELLOW}Aviso:${RESET} Há alterações no remoto que ainda não foram sincronizadas"
         git status -uno
         read -p "Deseja continuar mesmo assim? [y/N] " -n 1 -r
         echo
-        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+        [[ ! $REPLY =~ ^[Yy]$ ]] && echo -e "${CROSS} Operação cancelada" && exit 1
     fi
 }
 
 # Execução principal
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
-echo "Branch atual: $BRANCH"
-
-check_changes
+echo -e "${ARROW} Branch atual: ${BOLD}$BRANCH${RESET}"
 
 if $VERIFY || $DRY_RUN; then
     verify_conditions
 fi
 
+# Simulação
 if $DRY_RUN; then
-    echo "Modo simulação:"
-    echo "git add ."
-    echo "git commit -m \"$COMMIT_MSG\""
-    echo "git push origin $BRANCH"
+    echo -e "${YELLOW}${BOLD}[Modo Simulação]${RESET} Nenhuma alteração será feita"
+    echo -e "${ARROW} Comandos simulados:"
+    echo -e "  • git add ."
+    echo -e "  • git commit -m \"${COMMIT_MSG}\""
+    echo -e "  • git push origin ${BRANCH}"
     exit 0
 fi
 
 # Processo real
-echo "Preparando commit..."
+echo -e "${ARROW} Adicionando arquivos..."
 git add .
 
-echo "Criando commit..."
+# Verifica se algo foi realmente adicionado
+if git diff --cached --quiet; then
+    echo -e "${YELLOW}Nenhuma alteração nova para commitar${RESET}"
+    exit 0
+fi
+
+echo -e "${ARROW} Criando commit..."
 git commit -m "$COMMIT_MSG" || {
-    echo "Falha ao criar commit"
+    echo -e "${CROSS} Falha ao criar commit"
     exit 1
 }
 
-echo "Enviando para origin/$BRANCH..."
+echo -e "${ARROW} Enviando para origin/${BRANCH}..."
 git push origin "$BRANCH" || {
-    echo "Falha no push. Execute manualmente: git push origin $BRANCH"
+    echo -e "${CROSS} Falha no push. Execute manualmente: git push origin $BRANCH"
     exit 1
 }
 
-echo "Push concluído com sucesso!"
+echo -e "${CHECK} Push concluído com sucesso!"
