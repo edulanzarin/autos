@@ -9,17 +9,28 @@
 #   --dry-run  Mostra o que seria feito sem executar
 # ===========================
 
+# Cores ANSI
+GREEN="\e[32m"
+YELLOW="\e[33m"
+RED="\e[31m"
+BLUE="\e[34m"
+BOLD="\e[1m"
+RESET="\e[0m"
+CHECK="${GREEN}✔${RESET}"
+CROSS="${RED}✖${RESET}"
+ARROW="${BLUE}➜${RESET}"
+
 # Configurações
 DRY_RUN=false
 if [[ "$1" == "--dry-run" ]]; then
     DRY_RUN=true
-    echo "MODO SIMULAÇÃO (nada será deletado)"
+    echo -e "${YELLOW}${BOLD}[Modo Simulação]${RESET} Nenhuma alteração será feita"
 fi
 
 # Função para verificar comandos disponíveis
 check_command() {
     if ! command -v "$1" &> /dev/null; then
-        echo "Erro: '$1' não está instalado"
+        echo -e "${CROSS} Erro: '$1' não está instalado"
         exit 1
     fi
 }
@@ -29,58 +40,65 @@ check_command "git"
 check_command "xargs"
 
 # Passo 1: Atualizar referências remotas
-echo "Atualizando branches remotos..."
+echo -e "${ARROW} Atualizando referências remotas..."
 git fetch --prune
 
 # Passo 2: Limpar branches locais mergeadas
-echo "Procurando branches locais mergeadas..."
-LOCAL_BRANCHES=$(git branch --merged main | grep -v "main" | grep -v "*")
+echo -e "${ARROW} Buscando branches locais já mergeadas..."
+LOCAL_BRANCHES=$(git branch --merged main | grep -v "main" | grep -v "\*")
 
 if [ -z "$LOCAL_BRANCHES" ]; then
-    echo "Nenhuma branch mergeada para limpar"
+    echo -e "${CHECK} Nenhuma branch mergeada para remover"
 else
-    echo "Branches para remover:"
-    echo "$LOCAL_BRANCHES" | sed 's/^/  /'
+    echo -e "${YELLOW}Branches a serem removidas:${RESET}"
+    echo "$LOCAL_BRANCHES" | sed 's/^/  • /'
 
     if ! $DRY_RUN; then
+        echo
+        echo -e "${ARROW} Removendo branches..."
         echo "$LOCAL_BRANCHES" | xargs -n 1 git branch -d
-        echo "Branches removidas!"
+        echo -e "${CHECK} Branches removidas com sucesso!"
     fi
 fi
 
 # Passo 3: Limpar branches remotas deletadas
-echo "Verificando branches remotas..."
+echo -e "${ARROW} Verificando referências remotas obsoletas..."
 REMOTE_BRANCHES=$(git remote prune origin --dry-run | grep "origin/.*will be pruned")
 
 if [ -z "$REMOTE_BRANCHES" ]; then
-    echo "Nada para limpar no remoto"
+    echo -e "${CHECK} Nenhuma referência remota obsoleta"
 else
-    echo "Referências remotas obsoletas:"
-    echo "$REMOTE_BRANCHES" | sed 's/^/  /'
+    echo -e "${YELLOW}Referências remotas a serem limpas:${RESET}"
+    echo "$REMOTE_BRANCHES" | sed 's/^/  • /'
 
     if ! $DRY_RUN; then
+        echo
+        echo -e "${ARROW} Limpando referências remotas..."
         git remote prune origin
-        echo "Referências remotas limpas!"
+        echo -e "${CHECK} Referências remotas limpas!"
     fi
 fi
 
 # Passo 4: Limpeza de arquivos não rastreados (opcional)
-echo "Verificando arquivos não rastreados..."
+echo -e "${ARROW} Verificando arquivos não rastreados..."
 UNTRACKED=$(git clean -n -d)
 if [ -z "$UNTRACKED" ]; then
-    echo "Nenhum arquivo não rastreado"
+    echo -e "${CHECK} Nenhum arquivo não rastreado encontrado"
 else
-    echo "Arquivos não rastreados:"
-    echo "$UNTRACKED" | sed 's/^/  /'
+    echo -e "${YELLOW}Arquivos não rastreados:${RESET}"
+    echo "$UNTRACKED" | sed 's/^/  • /'
 
     if ! $DRY_RUN; then
+        echo
         read -p "Deseja remover os arquivos não rastreados? [y/N] " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
             git clean -f -d
-            echo "Arquivos removidos!"
+            echo -e "${CHECK} Arquivos removidos!"
+        else
+            echo -e "${CROSS} Arquivos mantidos"
         fi
     fi
 fi
 
-echo "Limpeza concluída!"
+echo -e "${GREEN}${BOLD}✔ Limpeza concluída com sucesso!${RESET}"
