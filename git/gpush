@@ -1,29 +1,116 @@
 #!/bin/bash
 
 # ===========================
-# gpush - Commit e Push Simplificado
+# gpush - Commit e Push Inteligente
 # ===========================
-# Faz commit de todas as alterações e envia para a branch atual.
-# Uso:
-#   gpush "mensagem do commit"
+# Descrição: Faz commit seguro com verificação prévia e push para o remoto
+# Uso: gpush "mensagem" [--dry-run|--verify]
+# Opções:
+#   --dry-run  Simula a operação sem efetivar mudanças
+#   --verify   Executa verificações extras antes de prosseguir
 # ===========================
 
-# Verifica se uma mensagem de commit foi fornecida
-if [ -z "$1" ]; then
-    echo "Uso: gpush \"mensagem do commit\""
+# Configurações
+DRY_RUN=false
+VERIFY=false
+COMMIT_MSG=""
+
+# Processa argumentos
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --dry-run)
+            DRY_RUN=true
+            shift
+            ;;
+        --verify)
+            VERIFY=true
+            shift
+            ;;
+        *)
+            COMMIT_MSG="$1"
+            shift
+            ;;
+    esac
+done
+
+# Validações iniciais
+if [ -z "$COMMIT_MSG" ]; then
+    echo "Erro: Mensagem de commit obrigatória"
+    echo "Uso: gpush \"mensagem\" [--dry-run|--verify]"
     exit 1
 fi
 
-# Verifica se há alterações no repositório (staged ou unstaged)
-if [ -z "$(git status --porcelain)" ]; then
-    echo "Nenhuma alteração para commitar."
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Erro: Diretório não é um repositório Git"
+    exit 1
+fi
+
+# Verificação de segurança
+check_changes() {
+    local changes=$(git status --porcelain)
+    if [ -z "$changes" ]; then
+        echo "Nenhuma alteração para commitar"
+        exit 0
+    else
+        echo "Alterações detectadas:"
+        echo "$changes" | sed 's/^/  /'
+    fi
+}
+
+# Verificação extra no modo --verify
+verify_conditions() {
+    echo "Verificações adicionais:"
+    
+    # 1. Confere se está na branch correta
+    CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    if [[ "$CURRENT_BRANCH" == "main" || "$CURRENT_BRANCH" == "master" ]]; then
+        read -p "Você está na branch $CURRENT_BRANCH. Continuar? [y/N] " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    fi
+
+    # 2. Verifica conflitos com o remoto
+    if ! git fetch --dry-run 2>&1 | grep -q "up to date"; then
+        echo "A branch remota tem alterações não sincronizadas!"
+        git status -uno
+        read -p "Deseja continuar mesmo assim? [y/N] " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    fi
+}
+
+# Execução principal
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Branch atual: $BRANCH"
+
+check_changes
+
+if $VERIFY || $DRY_RUN; then
+    verify_conditions
+fi
+
+if $DRY_RUN; then
+    echo "Modo simulação:"
+    echo "git add ."
+    echo "git commit -m \"$COMMIT_MSG\""
+    echo "git push origin $BRANCH"
     exit 0
 fi
 
-# Descobre o nome da branch atual
-BRANCH=$(git rev-parse --abbrev-ref HEAD)
-
-# Adiciona todas as alterações, faz commit e envia para o repositório remoto
+# Processo real
+echo "Preparando commit..."
 git add .
-git commit -m "$1"
-git push origin "$BRANCH"
+
+echo "Criando commit..."
+git commit -m "$COMMIT_MSG" || {
+    echo "Falha ao criar commit"
+    exit 1
+}
+
+echo "Enviando para origin/$BRANCH..."
+git push origin "$BRANCH" || {
+    echo "Falha no push. Execute manualmente: git push origin $BRANCH"
+    exit 1
+}
+
+echo "Push concluído com sucesso!"
