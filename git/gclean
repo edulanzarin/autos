@@ -1,0 +1,86 @@
+#!/bin/bash
+
+# ===========================
+# gclean - Git Clean Simplificado
+# ===========================
+# Descrição: Limpa branches locais já mergeadas e sincroniza com o remoto
+# Uso: autos gclean [--dry-run]
+# Opções:
+#   --dry-run  Mostra o que seria feito sem executar
+# ===========================
+
+# Configurações
+DRY_RUN=false
+if [[ "$1" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "MODO SIMULAÇÃO (nada será deletado)"
+fi
+
+# Função para verificar comandos disponíveis
+check_command() {
+    if ! command -v "$1" &> /dev/null; then
+        echo "Erro: '$1' não está instalado"
+        exit 1
+    fi
+}
+
+# Verifica dependências
+check_command "git"
+check_command "xargs"
+
+# Passo 1: Atualizar referências remotas
+echo "Atualizando branches remotos..."
+git fetch --prune
+
+# Passo 2: Limpar branches locais mergeadas
+echo "Procurando branches locais mergeadas..."
+LOCAL_BRANCHES=$(git branch --merged main | grep -v "main" | grep -v "*")
+
+if [ -z "$LOCAL_BRANCHES" ]; then
+    echo "Nenhuma branch mergeada para limpar"
+else
+    echo "Branches para remover:"
+    echo "$LOCAL_BRANCHES" | sed 's/^/  /'
+
+    if ! $DRY_RUN; then
+        echo "$LOCAL_BRANCHES" | xargs -n 1 git branch -d
+        echo "Branches removidas!"
+    fi
+fi
+
+# Passo 3: Limpar branches remotas deletadas
+echo "Verificando branches remotas..."
+REMOTE_BRANCHES=$(git remote prune origin --dry-run | grep "origin/.*will be pruned")
+
+if [ -z "$REMOTE_BRANCHES" ]; then
+    echo "Nada para limpar no remoto"
+else
+    echo "Referências remotas obsoletas:"
+    echo "$REMOTE_BRANCHES" | sed 's/^/  /'
+
+    if ! $DRY_RUN; then
+        git remote prune origin
+        echo "Referências remotas limpas!"
+    fi
+fi
+
+# Passo 4: Limpeza de arquivos não rastreados (opcional)
+echo "Verificando arquivos não rastreados..."
+UNTRACKED=$(git clean -n -d)
+if [ -z "$UNTRACKED" ]; then
+    echo "Nenhum arquivo não rastreado"
+else
+    echo "Arquivos não rastreados:"
+    echo "$UNTRACKED" | sed 's/^/  /'
+
+    if ! $DRY_RUN; then
+        read -p "Deseja remover os arquivos não rastreados? [y/N] " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            git clean -f -d
+            echo "Arquivos removidos!"
+        fi
+    fi
+fi
+
+echo "Limpeza concluída!"
