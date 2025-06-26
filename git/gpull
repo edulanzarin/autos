@@ -5,11 +5,47 @@
 # ===========================
 # Atualiza a branch atual com as alterações do repositório remoto.
 # Uso:
-#   gpull
+#   gpull [--dry-run]
+# Opções:
+#   --dry-run  Simula a operação sem efetivar mudanças
 # ===========================
+
+# Modo simulação
+DRY_RUN=false
+if [[ "$1" == "--dry-run" ]]; then
+    DRY_RUN=true
+    echo "MODO SIMULAÇÃO (nenhuma alteração será feita)"
+fi
+
+# Verifica se é um repositório Git
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Erro: Diretório não é um repositório Git"
+    exit 1
+fi
 
 # Descobre o nome da branch atual
 BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo "Branch atual: $BRANCH"
 
-# Executa o pull na branch atual
-git pull origin "$BRANCH"
+# Verifica se há alterações não commitadas
+if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Aviso: Há alterações não commitadas no working directory"
+    git status --short
+    if ! $DRY_RUN; then
+        read -p "▶Continuar mesmo assim? [y/N] " -n 1 -r
+        echo
+        [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
+    fi
+fi
+
+# Comando que seria executado
+PULL_CMD="git pull origin $BRANCH"
+echo "Comando: $PULL_CMD"
+
+# Execução condicional
+if $DRY_RUN; then
+    echo "Simulação concluída (use sem --dry-run para executar)"
+else
+    echo "Sincronizando com o remoto..."
+    eval "$PULL_CMD"
+fi
