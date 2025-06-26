@@ -32,7 +32,7 @@ if [[ -n "$(git status --porcelain)" ]]; then
     echo "Aviso: Há alterações não commitadas no working directory"
     git status --short
     if ! $DRY_RUN; then
-        read -p "▶Continuar mesmo assim? [y/N] " -n 1 -r
+        read -p "Continuar mesmo assim? [y/N] " -n 1 -r
         echo
         [[ ! $REPLY =~ ^[Yy]$ ]] && exit 1
     fi
